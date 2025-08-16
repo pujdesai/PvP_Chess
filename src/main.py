@@ -22,6 +22,10 @@ class Main:
         dragger = self.game.dragger
 
         while True:
+            # Check for game over conditions if not already over
+            if not game.game_over:
+                game.check_game_over()
+            
             # show methods
             game.show_bg(screen)
             game.show_last_move(screen)
@@ -42,6 +46,10 @@ class Main:
                 
                 # click piece
                 if event.type == pygame.MOUSEBUTTONDOWN:
+                    # Check for popup clicks first
+                    if game.handle_popup_click(event.pos):
+                        continue
+                    
                     # Don't allow moves if game is over
                     if game.game_over:
                         continue
@@ -67,6 +75,9 @@ class Main:
                         if piece.color == game.next_player:
                             piece.clear_moves()
                             board.calc_moves(piece, board_row, board_col)
+                            
+
+                            
                             # Save board coordinates, not display coordinates
                             dragger.save_initial_board_coords(board_row, board_col)
                             dragger.drag_piece(piece)

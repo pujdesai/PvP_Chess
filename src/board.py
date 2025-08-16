@@ -181,6 +181,19 @@ class Board:
                 
         return True
     
+    def square_under_attack(self, row, col, defending_color):
+        """Check if a square is under attack by the opponent"""
+        attacking_color = 'black' if defending_color == 'white' else 'white'
+        
+        for r in range(ROWS):
+            for c in range(COLS):
+                square = self.squares[r][c]
+                if square.has_piece() and square.piece.color == attacking_color:
+                    piece = square.piece
+                    if self.can_attack_king(piece, r, c, row, col):
+                        return True
+        return False
+    
     def would_be_in_check(self, piece, move):
         """Check if a move would put or leave the king in check"""
         # Save current state
@@ -217,7 +230,44 @@ class Board:
     
     def is_checkmate(self, color):
         """Check if the given color is in checkmate"""
-        return self.in_check(color) and not self.has_valid_moves(color)
+        # First check if the king is in check
+        if not self.in_check(color):
+            return False
+        
+        # Find the king
+        king = None
+        king_row, king_col = None, None
+        for row in range(ROWS):
+            for col in range(COLS):
+                square = self.squares[row][col]
+                if square.has_piece():
+                    if isinstance(square.piece, King) and square.piece.color == color:
+                        king = square.piece
+                        king_row, king_col = row, col
+                        break
+            if king:
+                break
+        
+        if not king:
+            return False
+        
+        # Check if king can escape check
+        king.clear_moves()
+        self.calc_moves(king, king_row, king_col)
+        if len(king.moves) > 0:
+            return False  # King can escape
+        
+        # Check if any other piece can block the check or capture the attacking piece
+        for row in range(ROWS):
+            for col in range(COLS):
+                square = self.squares[row][col]
+                if square.has_piece() and square.piece.color == color and square.piece != king:
+                    square.piece.clear_moves()
+                    self.calc_moves(square.piece, row, col)
+                    if len(square.piece.moves) > 0:
+                        return False  # Another piece can help
+        
+        return True  # No escape possible
     
     def is_stalemate(self, color):
         """Check if the given color is in stalemate"""
@@ -415,7 +465,7 @@ class Board:
                             piece.add_move(move)
 
             # castling moves
-            if not piece.moved:
+            if not piece.moved and not self.in_check(piece.color):
                 # queen castling (long castling)
                 left_rook = self.squares[row][0].piece
                 if isinstance(left_rook, Rook) and not left_rook.moved:
@@ -427,12 +477,18 @@ class Board:
                             break
                     
                     if can_castle:
-                        # create castling move
-                        initial = Square(row, col)
-                        final = Square(row, 2)  # king moves to c1/c8
-                        move = Move(initial, final)
-                        # check if move doesn't put king in check
-                        if not self.would_be_in_check(piece, move):
+                        # Check if king and squares it passes through are not under attack
+                        squares_safe = True
+                        for c in range(4, 2, -1):  # Check e1->d1->c1 or e8->d8->c8
+                            if self.square_under_attack(row, c, piece.color):
+                                squares_safe = False
+                                break
+                        
+                        if squares_safe:
+                            # create castling move
+                            initial = Square(row, col)
+                            final = Square(row, 2)  # king moves to c1/c8
+                            move = Move(initial, final)
                             piece.add_move(move)
 
                 # king castling (short castling)
@@ -446,12 +502,18 @@ class Board:
                             break
                     
                     if can_castle:
-                        # create castling move
-                        initial = Square(row, col)
-                        final = Square(row, 6)  # king moves to g1/g8
-                        move = Move(initial, final)
-                        # check if move doesn't put king in check
-                        if not self.would_be_in_check(piece, move):
+                        # Check if king and squares it passes through are not under attack
+                        squares_safe = True
+                        for c in range(4, 7):  # Check e1->f1->g1 or e8->f8->g8
+                            if self.square_under_attack(row, c, piece.color):
+                                squares_safe = False
+                                break
+                        
+                        if squares_safe:
+                            # create castling move
+                            initial = Square(row, col)
+                            final = Square(row, 6)  # king moves to g1/g8
+                            move = Move(initial, final)
                             piece.add_move(move)
                     
         if isinstance(piece, Pawn): 

@@ -20,6 +20,12 @@ class Game:
         self.move_history = []
         self.move_count = 1
         self.board_flipped = False
+        self.show_popup = False
+        self.popup_rect = None
+        self.new_game_button_rect = None
+        
+        # Check for checkmate at the start (in case we're loading a checkmate position)
+        self.check_game_over()
 
     # Show board methods (blit methods)
 
@@ -183,21 +189,49 @@ class Game:
 
     # other methods
     def next_turn(self):
+        # Check for game over conditions BEFORE switching turns
+        # Check if the player who just moved put the opponent in checkmate
+        if self.board.is_checkmate(self.next_player):
+            self.game_over = True
+            self.winner = 'white' if self.next_player == 'black' else 'black'
+            self.show_popup = True
+        elif self.board.is_stalemate(self.next_player):
+            self.game_over = True
+            self.winner = 'draw'
+            self.show_popup = True
+        
+        # Switch turns
         self.next_player = 'white' if self.next_player == 'black' else 'black'
         
         # Increment move count after black's move
         if self.next_player == 'white':
             self.move_count += 1
         
-        # Check for game over conditions
-        opponent = 'white' if self.next_player == 'black' else 'black'
-        
-        if self.board.is_checkmate(opponent):
+        # Check for checkmate/stalemate for the new player
+        self.check_game_over()
+    
+    def check_game_over(self):
+        """Check if the current player is in checkmate or stalemate"""
+        if self.board.is_checkmate(self.next_player):
             self.game_over = True
-            self.winner = self.next_player
-        elif self.board.is_stalemate(opponent):
+            self.winner = 'white' if self.next_player == 'black' else 'black'
+            self.show_popup = True
+        elif self.board.is_stalemate(self.next_player):
             self.game_over = True
             self.winner = 'draw'
+            self.show_popup = True
+    
+    def has_any_valid_moves(self):
+        """Check if the current player has any valid moves"""
+        for row in range(ROWS):
+            for col in range(COLS):
+                square = self.board.squares[row][col]
+                if square.has_piece() and square.piece.color == self.next_player:
+                    square.piece.clear_moves()
+                    self.board.calc_moves(square.piece, row, col)
+                    if len(square.piece.moves) > 0:
+                        return True
+        return False
     
     def add_move_to_history(self, piece, move, captured=False):
         """Add a move to the move history with algebraic notation"""
@@ -254,14 +288,36 @@ class Game:
     def reset(self):
         self.__init__()
     
+    def handle_popup_click(self, pos):
+        """Handle clicks on the popup dialog"""
+        if self.show_popup and self.new_game_button_rect:
+            if self.new_game_button_rect.collidepoint(pos):
+                self.reset()
+                return True
+        return False
+    
     def show_game_over(self, surface):
-        """Display game over message"""
-        if self.game_over:
+        """Display game over popup"""
+        if self.show_popup:
             # Create semi-transparent overlay
             overlay = pygame.Surface((WIDTH, HEIGHT))
-            overlay.set_alpha(128)
+            overlay.set_alpha(180)  # More opaque
             overlay.fill((0, 0, 0))
             surface.blit(overlay, (0, 0))
+            
+            # Popup dimensions
+            popup_width = 400
+            popup_height = 200
+            popup_x = (WIDTH - popup_width) // 2
+            popup_y = (HEIGHT - popup_height) // 2
+            
+            # Create popup background
+            popup_surface = pygame.Surface((popup_width, popup_height))
+            popup_surface.fill((100, 100, 100))  # Lighter gray background
+            popup_surface.set_alpha(255)
+            
+            # Draw popup border
+            pygame.draw.rect(popup_surface, (255, 255, 255), (0, 0, popup_width, popup_height), 3)
             
             # Game over text
             if self.winner == 'draw':
@@ -271,17 +327,32 @@ class Game:
                 text = f"{self.winner.upper()} WINS!"
                 color = (255, 255, 255)  # White
             
-            font = pygame.font.SysFont('monospace', 48, bold=True)
+            font = pygame.font.SysFont('monospace', 36, bold=True)
             text_surface = font.render(text, True, color)
-            text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2))
-            surface.blit(text_surface, text_rect)
+            text_rect = text_surface.get_rect(center=(popup_width//2, 60))
+            popup_surface.blit(text_surface, text_rect)
             
-            # Instructions
-            font_small = pygame.font.SysFont('monospace', 24, bold=True)
-            instruction_text = "Press 'R' to restart"
-            instruction_surface = font_small.render(instruction_text, True, (200, 200, 200))
-            instruction_rect = instruction_surface.get_rect(center=(WIDTH//2, HEIGHT//2 + 60))
-            surface.blit(instruction_surface, instruction_rect)
+            # New Game button
+            button_width = 150
+            button_height = 40
+            button_x = (popup_width - button_width) // 2
+            button_y = 120
+            
+            # Button background
+            pygame.draw.rect(popup_surface, (100, 100, 100), (button_x, button_y, button_width, button_height))
+            pygame.draw.rect(popup_surface, (255, 255, 255), (button_x, button_y, button_width, button_height), 2)
+            
+            # Button text
+            button_font = pygame.font.SysFont('monospace', 20, bold=True)
+            button_text = button_font.render("New Game", True, (255, 255, 255))
+            button_text_rect = button_text.get_rect(center=(popup_width//2, button_y + button_height//2))
+            popup_surface.blit(button_text, button_text_rect)
+            
+            # Store button rect for click detection
+            self.new_game_button_rect = pygame.Rect(popup_x + button_x, popup_y + button_y, button_width, button_height)
+            
+            # Draw popup on main surface
+            surface.blit(popup_surface, (popup_x, popup_y))
     
     def show_game_info(self, surface):
         """Display nothing - clean interface"""
