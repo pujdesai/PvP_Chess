@@ -19,17 +19,17 @@ class Game:
         self.winner = None
         self.move_history = []
         self.move_count = 1
+        self.board_flipped = False
 
     # Show board methods (blit methods)
 
     def show_bg(self, surface):
         theme = self.config.theme
-        board_flipped = self.next_player == 'black'
 
         for row in range(ROWS):
             for col in range(COLS):
-                # Calculate display coordinates (flipped if black's turn)
-                if board_flipped:
+                # Calculate display coordinates (flipped if board is flipped)
+                if self.board_flipped:
                     display_row = ROWS - 1 - row
                     display_col = COLS - 1 - col
                 else:
@@ -64,8 +64,6 @@ class Game:
                     surface.blit(lbl, lbl_pos)
 
     def show_pieces(self, surface):
-        board_flipped = self.next_player == 'black'
-        
         for row in range(ROWS):
             for col in range(COLS):
                 # check if piece belongs on square
@@ -80,8 +78,8 @@ class Game:
                         # stores the image of that piece in a variable
                         img = pygame.image.load(piece.texture)
                         
-                        # Calculate display coordinates (flipped if black's turn)
-                        if board_flipped:
+                        # Calculate display coordinates (flipped if board is flipped)
+                        if self.board_flipped:
                             display_row = ROWS - 1 - row
                             display_col = COLS - 1 - col
                         else:
@@ -96,15 +94,14 @@ class Game:
 
     def show_moves(self, surface):
         theme = self.config.theme
-        board_flipped = self.next_player == 'black'
 
         if self.dragger.dragging:
             piece = self.dragger.piece
 
             # loop through all valid moves
             for move in piece.moves:
-                # Calculate display coordinates (flipped if black's turn)
-                if board_flipped:
+                # Calculate display coordinates (flipped if board is flipped)
+                if self.board_flipped:
                     display_row = ROWS - 1 - move.final.row
                     display_col = COLS - 1 - move.final.col
                 else:
@@ -120,15 +117,14 @@ class Game:
 
     def show_last_move(self, surface):
         theme = self.config.theme
-        board_flipped = self.next_player == 'black'
 
         if self.board.last_move:
             initial = self.board.last_move.initial
             final = self.board.last_move.final
 
             for pos in [initial, final]:
-                # Calculate display coordinates (flipped if black's turn)
-                if board_flipped:
+                # Calculate display coordinates (flipped if board is flipped)
+                if self.board_flipped:
                     display_row = ROWS - 1 - pos.row
                     display_col = COLS - 1 - pos.col
                 else:
@@ -144,10 +140,8 @@ class Game:
 
     def show_hover(self, surface):
         if self.hovered_square:
-            board_flipped = self.next_player == 'black'
-            
-            # Calculate display coordinates (flipped if black's turn)
-            if board_flipped:
+            # Calculate display coordinates (flipped if board is flipped)
+            if self.board_flipped:
                 display_row = ROWS - 1 - self.hovered_square.row
                 display_col = COLS - 1 - self.hovered_square.col
             else:
@@ -164,8 +158,6 @@ class Game:
     def show_check_indicator(self, surface):
         """Show red border around king if in check"""
         if not self.game_over:
-            board_flipped = self.next_player == 'black'
-            
             # Check if current player is in check
             if self.board.in_check(self.next_player):
                 # Find the king
@@ -175,8 +167,8 @@ class Game:
                         if (square.has_piece() and 
                             isinstance(square.piece, King) and 
                             square.piece.color == self.next_player):
-                            # Calculate display coordinates (flipped if black's turn)
-                            if board_flipped:
+                            # Calculate display coordinates (flipped if board is flipped)
+                            if self.board_flipped:
                                 display_row = ROWS - 1 - row
                                 display_col = COLS - 1 - col
                             else:
@@ -248,6 +240,10 @@ class Game:
 
     def change_theme(self):
         self.config.change_theme()
+
+    def toggle_board_flip(self):
+        """Toggle the board flip state"""
+        self.board_flipped = not self.board_flipped
 
     def play_sound(self, captured=False):
         if captured:

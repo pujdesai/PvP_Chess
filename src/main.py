@@ -53,7 +53,7 @@ class Main:
                     clicked_col = dragger.mouseX // SQSIZE
 
                     # Convert display coordinates to board coordinates if board is flipped
-                    if game.next_player == 'black':
+                    if game.board_flipped:
                         board_row = ROWS - 1 - clicked_row
                         board_col = COLS - 1 - clicked_col
                     else:
@@ -65,6 +65,7 @@ class Main:
                         piece = board.squares[board_row][board_col].piece
                         # valid piece color
                         if piece.color == game.next_player:
+                            piece.clear_moves()
                             board.calc_moves(piece, board_row, board_col)
                             # Save board coordinates, not display coordinates
                             dragger.save_initial_board_coords(board_row, board_col)
@@ -81,7 +82,7 @@ class Main:
                     motion_row = event.pos[1] // SQSIZE
 
                     # Convert display coordinates to board coordinates if board is flipped
-                    if game.next_player == 'black':
+                    if game.board_flipped:
                         board_motion_row = ROWS - 1 - motion_row
                         board_motion_col = COLS - 1 - motion_col
                     else:
@@ -115,7 +116,7 @@ class Main:
                         released_col = dragger.mouseX // SQSIZE
 
                         # Convert display coordinates to board coordinates if board is flipped
-                        if game.next_player == 'black':
+                        if game.board_flipped:
                             board_released_row = ROWS - 1 - released_row
                             board_released_col = COLS - 1 - released_col
                         else:
@@ -151,6 +152,10 @@ class Main:
                     # press 'T' to change themes
                     if event.key == pygame.K_t:
                         game.change_theme()
+
+                    # press 'F' to flip board
+                    if event.key == pygame.K_f:
+                        game.toggle_board_flip()
 
                     # press 'R' to restart game
                     if event.key == pygame.K_r:

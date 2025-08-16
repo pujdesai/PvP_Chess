@@ -65,6 +65,7 @@ class Board:
         """Check if the king of given color is in check"""
         # Find the king
         king = None
+        king_row, king_col = None, None
         for row in range(ROWS):
             for col in range(COLS):
                 square = self.squares[row][col]
@@ -89,7 +90,6 @@ class Board:
                     # Check if this piece can attack the king directly
                     if self.can_attack_king(piece, row, col, king_row, king_col):
                         return True
-        
         return False
     
     def can_attack_king(self, piece, piece_row, piece_col, king_row, king_col):
@@ -195,6 +195,8 @@ class Board:
         # Check if king is in check
         in_check = self.in_check(piece.color)
         
+
+        
         # Restore the board
         self.squares[initial.row][initial.col].piece = piece
         self.squares[final.row][final.col].piece = captured_piece
@@ -220,6 +222,8 @@ class Board:
     def is_stalemate(self, color):
         """Check if the given color is in stalemate"""
         return not self.in_check(color) and not self.has_valid_moves(color)
+    
+
         
     def check_promotion(self, piece, final):
         if final.row == 0 or final.row == 7:
